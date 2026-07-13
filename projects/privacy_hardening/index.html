@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>John  Matiasevich | Privacy Hardening</title>
+    <title>John  Matiasevich | Self Managed End to End Encrypted Cloud Storage in AWS</title>
     <meta name="author" content="John  Matiasevich" />
     <meta name="description" content="A client-side encrypted personal drive on AWS S3, where the storage provider only ever holds ciphertext." />
     <meta name="keywords" content="privacy, client-side encryption, s3, rclone, grapheneos, zero-knowledge, portfolio-website" />
@@ -44,14 +44,6 @@
         background-color: transparent;
       }
       .shot { margin: 1.6rem 0; }
-      .shot-box {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .45rem; min-height: 180px;
-        border: 2px dashed var(--global-divider-color); border-radius: 8px;
-        color: var(--global-text-color); opacity: .5;
-      }
-      .shot-box i { font-size: 1.7rem; }
-      .shot-box span { font-size: .78rem; letter-spacing: .09em; text-transform: uppercase; }
     </style>
 
     <!-- Dark Mode -->
@@ -114,13 +106,13 @@
         <div class="post">
 
           <header class="post-header">
-            <h1 class="post-title">Privacy Hardening</h1>
+            <h1 class="post-title">Self Managed End to End Encrypted Cloud Storage in AWS</h1>
             <p class="post-description">A client-side encrypted personal drive on AWS S3, inside a minimal-trust build</p>
           </header>
 
           <article>
             <p>
-              My security work usually sits on the enterprise side, where the job is keeping outsiders away from
+              My security work usually sits on the enterprise side, where the job is to keep outsiders away from
               an organization's data. Privacy hardening turns that around. It asks how little a single person has
               to hand over to the infrastructure they already depend on. This page is about one finished piece of
               that effort. It is a personal cloud drive where the storage provider never holds a single readable
@@ -130,20 +122,19 @@
             <h2>The wider build, in brief</h2>
 
             <p>
-              The drive lives inside a larger minimal-trust setup spread across a few devices, each one aimed at a
+              The drive lives inside a larger minimal trust setup spread across a few devices, each one aimed at a
               different threat model.
             </p>
 
             <ul>
               <li>A privacy laptop. A ThinkPad running Linux with full disk encryption and three browser tiers that never share accounts.</li>
               <li>A GrapheneOS phone that keeps its apps in isolated profiles.</li>
-              <li>A planned counter-surveillance radio kit, and a separate Tails appliance reserved for the highest threat model.</li>
             </ul>
 
             <p>
               The rule underneath all of it is that the keys stay on my devices and the cloud is treated as
               storage rather than as something to trust. The rest of this page is about the drive, which is where
-              that rule gets its cleanest expression.
+              that rule gets implemented.
             </p>
 
             <hr>
@@ -152,16 +143,14 @@
 
             <p>
               Object storage like S3 is cheap and redundant. It keeps old versions and it lives offsite. The catch
-              is that the provider can normally read whatever you store, and so can anyone who breaches or
-              subpoenas them. Client-side encryption removes that catch. Every file is encrypted on my laptop
-              before it is uploaded, so S3 only ever receives ciphertext. That covers the filenames and the folder
-              names too, not just the contents.
+              is that the provider can normally read whatever you store along with anyone who breaches them. Client side encryption removes mitigates risk. Every file is encrypted on my laptop
+              before it is uploaded, so S3 only ever receives ciphertext. It encrypts the filenames and the folder
+              names too in addition to the contents.
             </p>
 
             <p>
               The secrets that make this work are an encryption password and a salt. They live only in an offline
-              password manager. They are never uploaded and never derivable from anything that is. If the whole
-              bucket leaked tomorrow, it would be noise.
+              password manager. They are never uploaded and never derivable from anything online so bucket leaks won't affect it.
             </p>
 
             <hr>
@@ -226,7 +215,7 @@
 
             <p>
               All of the provisioning here uses an administrator profile that exists only for setup. The drive
-              itself runs as a separate least-privilege user, created further down. Substitute your own values for
+              itself runs as a separate least privilege user, created further down. Substitute your own values for
               <code>BUCKET_NAME</code>, <code>REGION</code>, and <code>ACCOUNT_ID</code>. First the bucket is
               created and every form of public access is blocked.
             </p>
@@ -240,23 +229,21 @@ aws s3api put-public-access-block --bucket BUCKET_NAME \
 
             <p>
               Three more settings harden the bucket. Versioning is enabled, which keeps history and makes an
-              accidental delete recoverable. Default server-side encryption sits underneath the client-side crypt
-              as free defense in depth, though it is not the thing protecting the data. The client-side layer is.
-              A lifecycle rule ages out old versions and aborts stale multipart uploads so the storage bill stays
-              honest.
+              accidental delete recoverable. Default server side encryption sits underneath the client side crypt
+              as free defense in depth, though it is not the thing protecting the data (the client side layer is).
+              A lifecycle rule also ages out old versions and aborts stale multipart uploads.
             </p>
 
             <figure class="shot">
-              <!-- Replace this figure with: <img class="img-fluid rounded z-depth-1" src="/assets/img/privacy/s3-block-public-access.png" alt="Block all public access set to On"> -->
-              <div class="shot-box"><i class="fas fa-camera"></i><span>Screenshot</span></div>
+              <img class="img-fluid rounded z-depth-1" src="/assets/img/privacy/s3-block-public-access.png" data-zoomable alt="S3 bucket Permissions tab with Block all public access set to On">
               <figcaption class="caption">
-                AWS Console. S3 &rsaquo; BUCKET_NAME &rsaquo; Permissions, with <b>Block all public access</b> set to On.
+                The bucket's Permissions tab, with <b>Block all public access</b> set to On.
               </figcaption>
             </figure>
 
             <hr>
 
-            <h2>The least-privilege runtime user</h2>
+            <h2>The least privilege runtime user</h2>
 
             <p>
               The drive never runs with the admin key. It runs as a dedicated IAM user scoped to this one bucket
@@ -276,17 +263,15 @@ aws s3api put-public-access-block --bucket BUCKET_NAME \
 }</code></pre>
 
             <p>
-              The access key is printed once at creation and goes straight into the offline password manager,
-              never to disk. Later, when that user tries to create a bucket or reach anything outside this one, AWS
-              denies it. That denial is the point. It is proof the runtime key can do nothing but read and write
+              The access key is printed once at creation and went straight into the offline password manager. Later, if that user tries to create a bucket or reach anything outside this one, AWS
+              denies it. This is proof the runtime key can do nothing but read and write
               objects in a single bucket.
             </p>
 
             <figure class="shot">
-              <!-- Replace this figure with: <img class="img-fluid rounded z-depth-1" src="/assets/img/privacy/iam-inline-policy.png" alt="Inline least-privilege IAM policy"> -->
-              <div class="shot-box"><i class="fas fa-camera"></i><span>Screenshot</span></div>
+              <img class="img-fluid rounded z-depth-1" src="/assets/img/privacy/iam-inline-policy.png" data-zoomable alt="rclone-crypt-drive IAM user with its inline crypt-drive-s3 policy">
               <figcaption class="caption">
-                AWS Console. IAM &rsaquo; Users &rsaquo; rclone-crypt-drive, showing the inline policy scoped to the one bucket. Crop the key ID and never show the secret.
+                The <code>rclone-crypt-drive</code> IAM user and its inline <code>crypt-drive-s3</code> policy, scoped to the one bucket. The access key ID and account ID are blacked out.
               </figcaption>
             </figure>
 
@@ -311,7 +296,7 @@ access_key_id = &lt;RUNTIME_KEY_ID&gt;
 secret_access_key = &lt;RUNTIME_SECRET&gt;</code></pre>
 
             <p>
-              The crypt remote sits on a subpath with filename and directory-name encryption, which are rclone's
+              The crypt remote sits on a subpath with filename and directory name encryption, which are rclone's
               defaults.
             </p>
 
@@ -332,8 +317,8 @@ password2 = &lt;obscured crypt salt&gt;</code></pre>
             <h2>Proof it is encrypted</h2>
 
             <p>
-              This is the part worth seeing. Write a canary file, push it through the crypt remote, then look at
-              the same object from both sides.
+              This test used a canary file, pushed through the crypt remote, with a visual inspection validating that it is
+              the same object on both sides.
             </p>
 
             <pre><code>echo "canary $(date)" &gt; /tmp/canary.txt
@@ -349,10 +334,9 @@ rclone lsf s3raw:BUCKET_NAME/vault      # what S3 stores -> gibberish</code></pr
             </p>
 
             <figure class="shot">
-              <!-- Replace this figure with: <img class="img-fluid rounded z-depth-1" src="/assets/img/privacy/s3-vault-encrypted-names.png" alt="S3 objects with encrypted gibberish names"> -->
-              <div class="shot-box"><i class="fas fa-camera"></i><span>Screenshot</span></div>
+              <img class="img-fluid rounded z-depth-1" src="/assets/img/privacy/s3-vault-encrypted-names.png" data-zoomable alt="S3 vault prefix listing objects with encrypted gibberish names">
               <figcaption class="caption">
-                AWS Console. S3 &rsaquo; BUCKET_NAME &rsaquo; vault/, showing objects with encrypted gibberish names. The strongest single view of the whole build.
+                The bucket's <code>vault/</code> prefix. Every stored object has a ciphertext name like <code>b0kj51o8qecu55hdp1n0cu7gm0</code>. This is the strongest single view of the build.
               </figcaption>
             </figure>
 
@@ -361,9 +345,9 @@ rclone lsf s3raw:BUCKET_NAME/vault      # what S3 stores -> gibberish</code></pr
             <h2>Keeping it in sync</h2>
 
             <p>
-              A systemd user timer runs a two-way sync every fifteen minutes. The sync is gated on the VPN, so it
+              A systemd user timer runs a two way sync every fifteen minutes. The sync is gated on the VPN, so it
               only fires when Mullvad is connected, and a guard aborts the run if more than a quarter of the files
-              would be deleted. That guard is what stands between a bad run and a wiped drive.
+              would be deleted. The guard prevents a bad run from wiping a drive.
             </p>
 
             <pre><code>rclone bisync ~/Drive drive: --resync                          # first run only, baseline
@@ -373,40 +357,6 @@ rclone bisync ~/Drive drive: --conflict-resolve newer --max-delete 25   # routin
               The phone runs Round Sync, which is rclone for Android, with the identical crypt parameters. No new
               secrets are created for it. The same config produces the same encrypted view, so the laptop and the
               phone read one drive.
-            </p>
-
-            <hr>
-
-            <h2>What it protects, and what it does not</h2>
-
-            <p>What it protects.</p>
-            <ul>
-              <li>The contents and the filenames, from AWS and from anyone who reaches the bucket.</li>
-              <li>A provider breach or a subpoena, since only ciphertext is ever there.</li>
-              <li>Network observers, through HTTPS and the VPN.</li>
-              <li>Blast radius, since the runtime key reaches exactly one bucket.</li>
-            </ul>
-
-            <p>What it does not.</p>
-            <ul>
-              <li>Metadata. Object sizes and modification times stay visible to AWS. This is a known limit rather than a surprise.</li>
-              <li>A laptop that is already unlocked and compromised. Client-side encryption cannot help once the plaintext side is owned.</li>
-            </ul>
-
-            <p>
-              These edges are stated on purpose. A privacy tool that hides where it stops is worse than one that
-              names it.
-            </p>
-
-            <hr>
-
-            <h2>Where this leaves calendar and contacts</h2>
-
-            <p>
-              Files fit this model well because they sync fine as asynchronous objects. Live calendar and contacts
-              do not, because they want a reachable server rather than an object store. So the split I settled on
-              is files here on the encrypted S3 drive, and calendar and contacts on a separate end-to-end
-              encrypted service.
             </p>
 
           </article>
