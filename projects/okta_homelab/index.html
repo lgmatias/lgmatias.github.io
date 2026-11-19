@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <!-- Head -->
+  <head>    <!-- Metadata, OpenGraph and Schema.org -->
+
+
+    <!-- Standard metadata -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>John Matiasevich | Okta Identity Platform for the Home Lab</title>
+    <meta name="author" content="John Matiasevich" />
+    <meta name="description" content="Okta as the identity provider for a home lab: single sign on over OpenID Connect, group based access, the org managed in Terraform, and a read only AI assistant through Okta's MCP server." />
+    <meta name="keywords" content="okta, identity, sso, oidc, rbac, mfa, terraform, mcp, cloudflare access, zero trust, home lab, portfolio-website" />
+
+
+    <!-- Bootstrap & MDB -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-DF7Zhf293AJxJNTmh5zhoYYIMs2oXitRfBjY+9L//AY=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/css/mdb.min.css" integrity="sha256-jpjYvU3G3N6nrrBwXJoVEYI/0zw8htfFnhT9ljN3JJw=" crossorigin="anonymous" />
+
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/academicons@1.9.1/css/academicons.min.css" integrity="sha256-i1+4qU2G2860dGGIOJscdC30s9beBXjFfzjWLjBRsBg=" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Slab:100,300,400,500,700|Material+Icons">
+
+    <!-- Code Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jwarby/jekyll-pygments-themes@master/github.css" media="none" id="highlight_theme_light" />
+
+    <!-- Styles -->
+
+    <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔑</text></svg>">
+
+    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="canonical" href="https://lgmatias.github.io/projects/okta_homelab/">
+
+    <!-- Page-scoped styles: keep tables, the diagram and code readable in both light and dark themes and on a phone -->
+    <style>
+      .post article table.table,
+      .post article table.table th,
+      .post article table.table td {
+        color: var(--global-text-color);
+        border-color: var(--global-divider-color);
+        background-color: transparent;
+      }
+      .post article table.table td { font-size: 0.95rem; }
+      .shot { margin: 1.6rem 0; }
+      .diagram-scroll { overflow-x: auto; }
+      .diagram-scroll svg { min-width: 640px; max-width: 760px; }
+      .post article pre { overflow-x: auto; font-size: 0.85rem; }
+      .post article table.table td code { white-space: nowrap; }
+    </style>
+
+    <!-- Dark Mode -->
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jwarby/jekyll-pygments-themes@master/native.css" media="none" id="highlight_theme_dark" />
+
+    <script src="/assets/js/theme.js"></script>
+    <script src="/assets/js/dark_mode.js"></script>
+
+
+  </head>
+
+  <!-- Body -->
+  <body class="fixed-top-nav ">
+
+    <!-- Header -->
+    <header>
+
+      <!-- Nav Bar -->
+      <nav id="navbar" class="navbar navbar-light navbar-expand-sm fixed-top">
+        <div class="container">
+          <a class="navbar-brand title font-weight-lighter" href="https://lgmatias.github.io/"><span class="font-weight-bold">John</span>   Matiasevich</a>
+          <!-- Navbar Toggle -->
+          <button class="navbar-toggler collapsed ml-auto" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar top-bar"></span>
+            <span class="icon-bar middle-bar"></span>
+            <span class="icon-bar bottom-bar"></span>
+          </button>
+
+          <div class="collapse navbar-collapse text-right" id="navbarNav">
+            <ul class="navbar-nav ml-auto flex-nowrap">
+
+              <!-- About -->
+              <li class="nav-item ">
+                <a class="nav-link" href="/">about</a>
+              </li>
+
+              <!-- Other pages -->
+              <li class="nav-item ">
+                <a class="nav-link" href="/projects/">projects</a>
+              </li>
+
+              <!-- Toogle theme mode -->
+              <div class="toggle-container">
+                <a id="light-toggle">
+                  <i class="fas fa-moon"></i>
+                  <i class="fas fa-sun"></i>
+                </a>
+              </div>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Content -->
+    <div class="container mt-5">
+      <!-- page.html -->
+        <div class="post">
+
+          <header class="post-header">
+            <h1 class="post-title">Okta Identity Platform for the Home Lab</h1>
+            <p class="post-description">Single sign on, group based access, the org managed as code, and a read only AI assistant</p>
+          </header>
+
+          <article>
+            <p>
+              Okta is the identity provider for my home lab. Cloudflare Access, Immich and Forgejo sign people in
+              through it over OpenID Connect. Access follows group membership, one policy enforces MFA for all
+              three, and the org is managed as code. An AI assistant can read the org and cannot change it.
+            </p>
+
+            <hr>
+
+            <h2>Architecture</h2>
+
+            <p>
+              The lab is two machines, a Mac mini and a Windows PC. Its services reach the internet through a
+              Cloudflare Tunnel, so the router has no inbound ports open. Four hostnames sit behind Cloudflare
+              Access: a dashboard, a file browser, Forgejo for Git and Immich for photos. In Okta, Cloudflare
+              Access, Immich and Forgejo are each an OIDC web app that uses the authorization code flow. The org
+              runs on Identity Engine under the Integrator Free Plan and holds two accounts, both mine.
+            </p>
+
+            <figure class="mt-4 mb-2">
+              <div class="diagram-scroll">
+                <svg viewBox="0 0 760 456" width="100%" role="img" aria-labelledby="oktaArchTitle oktaArchDesc">
+                  <title id="oktaArchTitle">How a request and the automation reach Okta</title>
+                  <desc id="oktaArchDesc">A browser request goes to Cloudflare Access and through a Cloudflare Tunnel to the home lab apps. Cloudflare Access and the apps send sign in to the Okta org over OpenID Connect. Terraform and an AI assistant each reach Okta as a separate service app that authenticates with a private key.</desc>
+
+                  <defs>
+                    <marker id="oktaArrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--global-text-color)"></path>
+                    </marker>
+                  </defs>
+
+                  <!-- Left column: the path of a request -->
+                  <rect x="20" y="16" width="280" height="62" rx="9"
+                        fill="var(--global-theme-color)" fill-opacity="0.07"
+                        stroke="var(--global-divider-color)" stroke-width="1"/>
+                  <text x="160" y="43" text-anchor="middle" font-size="16" font-weight="600" fill="var(--global-text-color)">Browser</text>
+                  <text x="160" y="63" text-anchor="middle" font-size="13" fill="var(--global-text-color)" opacity="0.7">a laptop or a phone, anywhere</text>
+
+                  <line x1="160" y1="80" x2="160" y2="118" stroke="var(--global-text-color)" stroke-width="1.5" marker-end="url(#oktaArrow)"/>
+                  <text x="176" y="103" font-size="12.5" fill="var(--global-text-color)" opacity="0.75">request to a protected hostname</text>
+
+                  <rect x="20" y="128" width="280" height="62" rx="9"
+                        fill="var(--global-theme-color)" fill-opacity="0.07"
+                        stroke="var(--global-divider-color)" stroke-width="1"/>
+                  <text x="160" y="155" text-anchor="middle" font-size="16" font-weight="600" fill="var(--global-text-color)">Cloudflare Access</text>
+                  <text x="160" y="175" text-anchor="middle" font-size="13" fill="var(--global-text-color)" opacity="0.7">one allow policy per hostname</text>
+
+                  <line x1="160" y1="192" x2="160" y2="230" stroke="var(--global-text-color)" stroke-width="1.5" marker-end="url(#oktaArrow)"/>
+                  <text x="176" y="215" font-size="12.5" fill="var(--global-text-color)" opacity="0.75">Cloudflare Tunnel, no inbound ports</text>
+
+                  <rect x="20" y="240" width="280" height="62" rx="9"
+                        fill="var(--global-theme-color)" fill-opacity="0.07"
+                        stroke="var(--global-divider-color)" stroke-width="1"/>
+                  <text x="160" y="267" text-anchor="middle" font-size="16" font-weight="600" fill="var(--global-text-color)">Home lab apps</text>
+                  <text x="160" y="287" text-anchor="middle" font-size="13" fill="var(--global-text-color)" opacity="0.7">dashboard, files, Forgejo, Immich</text>
+
+                  <!-- Right column: the identity provider -->
+                  <rect x="440" y="128" width="300" height="174" rx="9"
+                        fill="var(--global-theme-color)" fill-opacity="0.12"
+                        stroke="var(--global-theme-color)" stroke-width="1.5"/>
+                  <text x="590" y="188" text-anchor="middle" font-size="16" font-weight="600" fill="var(--global-theme-color)">Okta org</text>
+                  <text x="590" y="212" text-anchor="middle" font-size="13" fill="var(--global-text-color)" opacity="0.7">groups and group rules</text>
+                  <text x="590" y="232" text-anchor="middle" font-size="13" fill="var(--global-text-color)" opacity="0.7">one MFA policy for the apps</text>
+                  <text x="590" y="252" text-anchor="middle" font-size="13" fill="var(--global-text-color)" opacity="0.7">groups claim in the ID token</text>
+
+                  <line x1="302" y1="159" x2="430" y2="159" stroke="var(--global-text-color)" stroke-width="1.5" marker-end="url(#oktaArrow)"/>
+                  <text x="366" y="151" text-anchor="middle" font-size="12.5" fill="var(--global-text-color)" opacity="0.75">OIDC sign in</text>
+
+                  <line x1="302" y1="271" x2="430" y2="271" stroke="var(--global-text-color)" stroke-width="1.5" marker-end="url(#oktaArrow)"/>
+                  <text x="366" y="263" text-anchor="middle" font-size="12.5" fill="var(--global-text-color)" opacity="0.75">OIDC sign in</text>
+
+                  <!-- Bottom row: automation, each as its own service app -->
+                  <rect x="220" y="362" width="250" height="78" rx="9"
+                        fill="var(--global-theme-color)" fill-opacity="0.07"
+                        stroke="var(--global-divider-color)" stroke-width="1"/>
+                  <text x="345" y="388" text-anchor="middle" font-size="15" font-weight="600" fill="var(--global-text-color)">Terraform and scripts</text>
+                  <text x="345" y="408" text-anchor="middle" font-size="12.5" fill="var(--global-text-color)" opacity="0.7">service app with manage scopes</text>
+                  <text x="345" y="426" text-anchor="middle" font-size="12.5" fill="var(--global-text-color)" opacity="0.7">groups, rules, memberships, apps</text>
+
+                  <rect x="490" y="362" width="250" height="78" rx="9"
+                        fill="var(--global-theme-color)" fill-opacity="0.07"
+                        stroke="var(--global-divider-color)" stroke-width="1"/>
+                  <text x="615" y="388" text-anchor="middle" font-size="15" font-weight="600" fill="var(--global-text-color)">AI assistant</text>
+                  <text x="615" y="408" text-anchor="middle" font-size="12.5" fill="var(--global-text-color)" opacity="0.7">launcher and Okta MCP server</text>
+                  <text x="615" y="426" text-anchor="middle" font-size="12.5" fill="var(--global-text-color)" opacity="0.7">service app with six read scopes</text>
+
+                  <line x1="455" y1="360" x2="455" y2="314" stroke="var(--global-text-color)" stroke-width="1.5" marker-end="url(#oktaArrow)"/>
+                  <text x="465" y="341" font-size="12.5" fill="var(--global-text-color)" opacity="0.75">private key JWT</text>
+
+                  <line x1="615" y1="360" x2="615" y2="314" stroke="var(--global-text-color)" stroke-width="1.5" marker-end="url(#oktaArrow)"/>
+                  <text x="625" y="341" font-size="12.5" fill="var(--global-text-color)" opacity="0.75">private key JWT</text>
+                </svg>
+              </div>
+              <figcaption class="caption">
+                Cloudflare Access trusts Okta for all four hostnames. Immich and Forgejo also trust it for their own
+                logins. Automation reaches Okta as two separate service apps.
+              </figcaption>
+            </figure>
+
+            <hr>
+
+            <h2>Access follows groups</h2>
+
+            <p>
+              Nobody is assigned to an app or a hostname directly. There are two role groups and four access
+              groups, one access group per protected hostname. People are added to role groups, and group rules
+              turn role membership into access membership. Removing someone from a role group removes every
+              access group behind it.
+            </p>
+
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th scope="col">Group</th>
+                    <th scope="col">Membership</th>
+                    <th scope="col">What it opens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>homelab-admins</code></td>
+                    <td>Direct</td>
+                    <td>Every access group, through a group rule</td>
+                  </tr>
+                  <tr>
+                    <td><code>homelab-users</code></td>
+                    <td>Direct</td>
+                    <td>Sign in through Cloudflare Access, plus <code>access-home</code> through a group rule</td>
+                  </tr>
+                  <tr>
+                    <td><code>access-home</code></td>
+                    <td>Group rule</td>
+                    <td>The dashboard</td>
+                  </tr>
+                  <tr>
+                    <td><code>access-git</code></td>
+                    <td>Group rule</td>
+                    <td>The Git hostname and the Forgejo login</td>
+                  </tr>
+                  <tr>
+                    <td><code>access-files</code></td>
+                    <td>Group rule</td>
+                    <td>The file browser</td>
+                  </tr>
+                  <tr>
+                    <td><code>access-photos</code></td>
+                    <td>Group rule</td>
+                    <td>The photos hostname and the Immich login</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              Two things enforce this. Okta lets a person sign in to an app only if they are in the group
+              assigned to it. Cloudflare Access reads a <code>groups</code> claim in the ID token and applies one
+              allow policy per hostname, each keyed on one access group. The claim is filtered to group names
+              that start with <code>access-</code>, so the token carries what the policies need and nothing else.
+            </p>
+
+            <p>
+              This is the rule that gives admins every access group, as it stands in Terraform. The access
+              groups come from a map, so a new hostname is one more line there.
+            </p>
+
+            <pre><code>resource "okta_group_rule" "admins_get_all_access" {
+  name              = "homelab-admins get every access group"
+  status            = "ACTIVE"
+  group_assignments = [for g in okta_group.access : g.id]
+  expression_type   = "urn:okta:expression:1.0"
+  expression_value  = "isMemberOfGroupName(\"homelab-admins\")"
+  depends_on        = [okta_group.homelab_admins]
+}</code></pre>
+
+            <hr>
+
+            <h2>Signing in</h2>
+
+            <p>
+              The three apps share one authentication policy. Its rule requires a password plus Okta Verify, by
+              push or by code, and asks for both again after twelve hours. The policy is assigned to the apps, so
+              the requirement lives in one place.
+            </p>
+
+            <p>
+              <b>Break glass.</b> A second Cloudflare policy sits on every hostname beside the Okta one. It
+              admits only my own email addresses through a One-time PIN, so the lab still opens if Okta is
+              unreachable or a policy mistake locks Okta itself. Immich and Forgejo keep their local logins as
+              well. The org has two super admins with authenticators on separate phones.
+            </p>
+
+            <hr>
+
+            <h2>The org as code</h2>
+
+            <p>
+              Groups, group rules and memberships are in Terraform, so a change is a plan that is read before it
+              is applied. The OIDC apps are the exception. Okta returns a client secret when it creates one and
+              Terraform would keep that secret in its state file, so a script creates the apps and hands each
+              secret to the system that needs it or to the operating system's credential store.
+            </p>
+
+            <p>
+              Nothing automated uses a shared API token. There are two OAuth service apps, each with its own
+              private key, scopes and admin role. One manages the org for Terraform and the scripts. The other
+              can only read it and belongs to the AI assistant. Both authenticate with private key JWT. The keys
+              live in Windows Credential Manager and are read at run time, so no file in the repository is
+              secret.
+            </p>
+
+            <hr>
+
+            <h2>A read only AI assistant</h2>
+
+            <p>
+              Claude Code can query the org through Okta's
+              <a href="https://github.com/okta/okta-mcp-server" target="_blank" rel="noopener noreferrer">open source MCP server</a>,
+              which exposes the Okta API to an AI assistant as tools. The server runs locally behind a small
+              launcher script. Three layers keep it read only.
+            </p>
+
+            <ul>
+              <li>
+                <b>The Okta role.</b> The assistant's service app holds the Read-only Administrator role. Okta
+                checks the role as well as the scope, so a write scope granted by mistake would still change
+                nothing.
+              </li>
+              <li>
+                <b>The OAuth scopes.</b> The token carries six read scopes. The server registers only the tools
+                those scopes cover and checks the scope again on every call.
+              </li>
+              <li>
+                <b>The launcher.</b> It reads the private key from Credential Manager at launch, so no config file
+                holds it, and it pins the server version. It passes only the tools whose names start with
+                <code>list_</code> or <code>get_</code> and refuses a call to anything else. That hides one tool
+                the server offers whatever scopes are granted, <code>export_users_csv</code>, which writes every
+                user to a file.
+              </li>
+            </ul>
+
+            <pre><code>SCOPES = ("okta.users.read okta.groups.read okta.apps.read "
+          "okta.policies.read okta.logs.read okta.deviceAssurance.read")
+SERVER = "okta-mcp-server@1.1.7"
+
+
+def allowed(name):
+    """True for the tools a client may see: list and get tools and the scope notices."""
+    return name.startswith(("list_", "get_")) or name.endswith("_scope_info")</code></pre>
+
+            <p>
+              Okta's System Log records the token grant at the start of each session and not the reads that
+              follow. The launcher therefore logs every call it relays or refuses, with the time, the tool and
+              the arguments, and it does not send a call that it could not log.
+            </p>
+
+            <figure class="shot">
+              <img class="img-fluid rounded z-depth-1" src="/assets/img/okta/system-log-token-grant.png" data-zoomable alt="Okta System Log entry showing an access token granted to the okta-read service app with six read scopes and private key JWT client authentication">
+              <figcaption class="caption">
+                The System Log entry for one assistant session: a client credentials grant to the
+                <code>okta-read</code> service app, authenticated with <code>private_key_jwt</code>, carrying the six
+                read scopes. The client ID and a device hash are covered.
+              </figcaption>
+            </figure>
+
+            <hr>
+
+            <h2>Limits</h2>
+
+            <ul>
+              <li>
+                A password plus a push is MFA but it is not phishing resistant. Okta FastPass or a passkey would
+                be.
+              </li>
+              <li>
+                Removing someone from a group takes effect at their next sign in. A Cloudflare Access session
+                lasts up to 24 hours unless I revoke it by hand.
+              </li>
+              <li>
+                The service app that Terraform uses holds the Super Administrator role. Its token is narrowed by
+                scopes, but the role is broader than the work needs.
+              </li>
+            </ul>
+
+            <p>
+              The repository is private because it names my org and my hostnames. I am glad to walk through it.
+            </p>
+
+          </article>
+
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="fixed-bottom">
+      <div class="container mt-0">
+        © Copyright 2026 John Matiasevich. Powered by <a href="https://jekyllrb.com/" target="_blank" rel="noopener noreferrer">Jekyll</a> with <a href="https://github.com/alshedivat/al-folio" target="_blank" rel="noopener noreferrer">al-folio</a> theme. Hosted by <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>.
+
+      </div>
+    </footer>
+
+    <!-- JavaScripts -->
+    <!-- jQuery -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+
+    <!-- Bootsrap & MDB scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.2/dist/umd/popper.min.js" integrity="sha256-l/1pMF/+J4TThfgARS6KwWrk/egwuVvhRzfLAMQ6Ds4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.min.js" integrity="sha256-SyTu6CwrfOhaznYZPoolVw2rxoY7lKYKQvqbtqN93HI=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/js/mdb.min.js" integrity="sha256-NdbiivsvWt7VYCt6hYNT3h/th9vSTL4EDWeGs5SN3DA=" crossorigin="anonymous"></script>
+
+  <!-- Medium Zoom JS -->
+  <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js" integrity="sha256-EdPgYcPk/IIrw7FYeuJQexva49pVRZNmt3LculEr7zM=" crossorigin="anonymous"></script>
+  <script src="/assets/js/zoom.js"></script><!-- Load Common JS -->
+  <script src="/assets/js/common.js"></script>
+
+
+  </body>
+</html>
